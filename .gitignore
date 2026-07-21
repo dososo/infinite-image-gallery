@@ -1,0 +1,16 @@
+# 参考素材(他人视频帧,仅本地调研用,不随开源仓库分发)
+reference/
+
+# 内部开发交接笔记(引用 reference/,对使用者无意义)
+HANDOFF.md
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# 依赖 / 日志
+node_modules/
+*.log

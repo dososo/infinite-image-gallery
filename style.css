@@ -1,0 +1,72 @@
+:root { --bg: #f4f4f2; --ink: #111; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; background: var(--bg); }
+body { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); }
+
+/* touch-action:none —— 关掉原生手势,拖动全交给 JS(平面无限滚动) */
+.viewport { position: fixed; inset: 0; overflow: hidden; touch-action: none; overscroll-behavior: none; cursor: grab; }
+.viewport:active { cursor: grabbing; }
+/* 世界层:拖动平移的就是这一层(相机),图片钉在里面;无限循环靠 recycle 搬运 */
+.world { position: absolute; inset: 0; will-change: transform; }
+
+.tile {
+  position: absolute; top: 0; left: 0;
+  width: 240px; height: 160px;   /* 3:2;入场堆叠时由 JS 放大到 1.8× */
+  filter: grayscale(1);
+  transition: filter .4s;
+  /* 不给 tile 常驻 will-change:漫游时 tiles 钉在 world 不各自动,只有 world 一层需要 */
+}
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 2px; transition: box-shadow .3s ease; }
+.tile:hover { filter: grayscale(0); }   /* hover 复原彩色(纯 CSS) */
+.tile:hover img { box-shadow: 0 10px 34px rgba(0, 0, 0, .30); }   /* hover 浮起投影(放大由 JS gsap 控,避开与 inline transform 冲突) */
+/* 移动/滑行时禁 hover:图不响应鼠标,避免快速掠过反复变色/置顶而闪烁 */
+.viewport.moving .tile { pointer-events: none; }
+
+/* 胶片颗粒:一层动态银盐噪点,黑白摄影的灵魂,让画面"呼吸"(成本近零:一层伪元素 + SVG feTurbulence) */
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 900;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;   /* 静态噪点:去掉 animation 与 mix-blend-mode → morph/滚动时不再每帧全屏混合重绘 */
+}
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-3%, 2%); }
+  50% { transform: translate(2%, -3%); }
+  75% { transform: translate(-2%, -2%); }
+}
+@media (prefers-reduced-motion: reduce) { body::after { animation: none; } }
+@media (max-width: 640px) { body::after { opacity: 0.045; animation-duration: 0.9s; } }   /* 移动端 grain 降载:省 overdraw 与耗电 */
+
+/* idle 态居中提示,点击后淡出 */
+.hint {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-size: 13px; letter-spacing: .12em; color: var(--ink);
+  opacity: .5; pointer-events: none; z-index: 500; white-space: nowrap;
+}
+
+/* 散开后短暂操作提示:底部居中,淡入淡出由 gsap 控 */
+.tip {
+  position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
+  font-size: 12px; letter-spacing: .14em; color: var(--ink);
+  opacity: 0; pointer-events: none; z-index: 500; white-space: nowrap;
+}
+@media (max-width: 640px) { .tip { font-size: 10px; letter-spacing: .06em; bottom: 30px; white-space: normal; text-align: center; width: 90%; } }
+
+/* CRT 关机黑幕:消失时黑屏吞没画面 */
+.crt {
+  position: fixed; inset: 0; background: #000;
+  opacity: 0; pointer-events: none; z-index: 950;
+}
+/* CRT 关机白光余晖:收成中央点那一记短促亮闪(荧光余辉) */
+.crt-dot {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 16px; height: 6px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 32px 12px rgba(255, 255, 255, 0.95);
+  opacity: 0; pointer-events: none; z-index: 960;
+}
+
+.frame { position: fixed; inset: 0; pointer-events: none; z-index: 1000; }
+.sign { position: absolute; bottom: 24px; left: 24px; font-size: 12px; letter-spacing: .08em; line-height: 1.7; }
+.sign-brand { display: block; }
+.sign-link { display: block; margin-top: 2px; color: inherit; text-decoration: none; opacity: .55; pointer-events: auto; }
+.sign-link:hover { opacity: 1; text-decoration: underline; }
